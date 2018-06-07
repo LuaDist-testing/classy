@@ -9,13 +9,8 @@ local pairs = assert( pairs )
 local ipairs = assert( ipairs )
 local type = assert( type )
 local error = assert( error )
-local loadstring = assert( V == "Lua 5.1" and loadstring or load )
-local table = table
-assert( type( table ) == "table" )
-local string = string
-assert( type( string ) == "table" )
+local load = assert( load )
 local s_rep = assert( string.rep )
-local t_concat = assert( table.concat )
 local t_unpack = assert( V == "Lua 5.1" and unpack or table.unpack )
 
 
@@ -224,7 +219,10 @@ end
 
 -- change the type of an object to the new class
 function M.cast( o, newcls )
-  local info = assert( classinfo[ newcls ], "invalid class" )
+  local info = classinfo[ newcls ]
+  if not info then
+    error( "invalid class" )
+  end
   setmetatable( o, info.o_meta )
   return o
 end
@@ -474,9 +472,13 @@ do
     code[ #code+1 ] = "]=f\n  end\n  return f("
     c_varlist( code, mm[ 3 ], "_" )
     code[ #code+1 ] = ",...)\nend\n"
-    code = t_concat( code )
-    --print( code ) -- XXX
-    local f = assert( loadstring( code, "[multimethod]" ) )(
+    local i = 0
+    local function ld()
+      i = i + 1
+      return code[ i ]
+    end
+    --print( table.concat( code ) ) -- XXX
+    local f = assert( load( ld, "=[multimethod]" ) )(
       type, make_weak(), empty, make_weak, select_impl, no_match3,
       amb_call, t_unpack( tcs )
     )
@@ -491,8 +493,7 @@ do
                        "argument is not a multimethod" )
     local i, n = 1, select( '#', ... )
     local ol = {}
-    assert( n >= 1, "missing function in overload specification" )
-    local func = assert( select( n, ... ),
+    local func = assert( n >= 1 and select( n, ... ),
                          "missing function in overload specification" )
     while i < n do
       local a = select( i, ... )
